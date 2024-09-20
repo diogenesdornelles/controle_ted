@@ -2,12 +2,13 @@ from datetime import datetime as dt
 from multiprocessing import Process
 from pathlib import Path
 
-import streamlit as st
 from pandas import DataFrame
 from pydantic import BaseModel
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
-from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
+import streamlit as st
+from app_dataframe.statefull_dataframe_handler import \
+    statefull_dataframe_handler
 from app_models.models import TaskSettings
 from app_schedule.end_schedule import end_schedule
 from app_schedule.run_schedule import run_schedule
@@ -24,7 +25,11 @@ class AppState(BaseModel):
         _type_: _description_
     """
 
+    username: str = ""
+    timeout: int = 0
+    max_timeout: int = 300
     is_logged: bool = False
+    pwd_ok: bool = False
     file_uploaded: None | UploadedFile = None
     df: DataFrame | bool = statefull_dataframe_handler.get_df()
     task_process: TaskSettings = {"since": "", "process": None, "should_run": False}
@@ -34,11 +39,16 @@ class AppState(BaseModel):
 
         arbitrary_types_allowed = True
 
-    def check_login(self, user: str, pwd: str) -> bool:
-        if user == settings.user_app and pwd == settings.user_pwd:
+    def check_login(self, username: str, pwd: str) -> bool:
+
+        if username == settings.user_app and pwd == settings.user_pwd:
             self.is_logged = True
+            self.username = username
             return True
         return False
+
+    def restore_timeout(self) -> None:
+        self.timeout = self.max_timeout
 
     def kill_task(self) -> bool:
         """_summary_

@@ -5,13 +5,32 @@ Here's our first attempt at using data to create a table:
 
 from pathlib import Path
 
-import streamlit as st
 from pandas import DataFrame
 
-from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
+import streamlit as st
+from app_dataframe.statefull_dataframe_handler import \
+    statefull_dataframe_handler
 from app_state.app_state import state
+from settings import settings
 
-st.html("")
+
+@st.dialog("Confirmação", width="large")
+def confirm_pwd() -> None:
+    st.write("Confirme sua senha")
+    with st.form("Senha", clear_on_submit=True):
+        pwd = st.text_input(
+            "Senha",
+            placeholder="senha",
+            type="password",
+            autocomplete=None,
+            help="senha",
+        )
+        btn = st.form_submit_button("Verificar", type="primary")
+        if btn:
+            state.pwd_ok = pwd == settings.user_pwd
+            st.rerun()
+    if st.button("Fechar"):
+        st.rerun()
 
 
 # Instruções renderizadas quando houve clique no btn dialog
@@ -50,6 +69,8 @@ def show_instructions() -> None:
         <p>O sistema calcula automaticamente os 120 dias para prestação de contas e emite aviso 35 dias antes do fim da vigência.</p>
         <p>O sistema somente envia e-mail se houver uma planilha válida e houver a inicialização da rotina.</p>
         <p>É possível interromper a rotina a qualquer momento.</p>
+        <p>Por motivos de segurança, o aplicativo funciona com um tempo de sessão definido, ajustável no menu lateral, que pode variar entre 30 segundos e 10 minutos. A cada interação o tempo de sessão é restaurado.</p>
+        <p></p>
     </div>
     """,
         unsafe_allow_html=True,
@@ -58,8 +79,22 @@ def show_instructions() -> None:
         st.rerun()
 
 
+@st.fragment(run_every=1)
+def timeout_counter():
+    state.timeout -= 1
+    if state.timeout > 0:
+        st.progress(
+            1 - (state.timeout / state.max_timeout), text="Tempo restante de sessão..."
+        )
+    else:
+        state.is_logged = False
+        st.rerun()
+
+
 def always_run_components() -> None:
     """_summary_"""
+
+    st.success(f"Bem-vindo(a): {state.username}")
     if st.button(
         ":material/integration_instructions: Ver instruções",
         help="Visualizar instruções",
@@ -108,13 +143,15 @@ def handle_new() -> None:
 
 def handle_save() -> None:
     """_summary_"""
-    if isinstance(state.df, DataFrame):
+    confirm_pwd()
+    if isinstance(state.df, DataFrame) and state.pwd_ok:
         if statefull_dataframe_handler.save_df(state.df):
             st.toast(":material/add: Planilha salva com sucesso!")
         else:
             st.toast(":material/error: Planilha não pôde ser salva!")
     else:
         st.toast(":material/error: Não há planilha previamente aberta!")
+    state.pwd_ok = False
 
 
 def handle_hide() -> None:
@@ -138,43 +175,58 @@ def handle_load() -> None:
 
 def handle_delete() -> None:
     """Summary"""
-    if statefull_dataframe_handler.delete_dataframe():
-        st.toast(":material/delete: Planilha deletada")
-        if state.kill_task():
-            st.toast(":material/cancel: Rotina desativada")
+    confirm_pwd()
+    if state.pwd_ok:
+        if statefull_dataframe_handler.delete_dataframe():
+            st.toast(":material/delete: Planilha deletada")
+            if state.kill_task():
+                st.toast(":material/cancel: Rotina desativada")
+            else:
+                st.toast(":material/info: Não há rotina para desativar")
+            handle_hide()
         else:
-            st.toast(":material/info: Não há rotina para desativar")
-        handle_hide()
-    else:
-        st.toast(":material/error: Aparentemente, não há planilha salva")
+            st.toast(":material/error: Aparentemente, não há planilha salva")
+    state.pwd_ok = False
 
 
 def handle_start() -> None:
     """_summary_"""
+    confirm_pwd()
     if state.start_task():
         st.toast(":material/start: Rotina iniciada")
     else:
         st.toast(
             ":material/error: Ops... algo deu errado com o carregamento. Talvez não haja planilha salva"
         )
+    state.pwd_ok = False
 
 
 def handle_pause() -> None:
     """_summary_"""
+    confirm_pwd()
     if state.kill_task():
         st.toast(":material/cancel: Rotina desativada")
     else:
         st.toast(":material/error: Aparentemente, não há rotina para desativar")
+    state.pwd_ok = False
+
+
+def handle_logout() -> None:
+    """_summary_"""
+    if not state.is_logged:
+        st.toast(":material/cancel: Usuário não logado")
+    else:
+        state.is_logged = False
+        st.toast(":material/logout: Usuário deslogado")
 
 
 if __name__ == "__main__":
 
     # Interface principal da aplicação
     st.title("Controle de TEDs")
-    st.sidebar.title("Menu")
 
     if not state.is_logged:
-        with st.form("Faça login"):
+        with st.form("Faça login", clear_on_submit=True):
             username = st.text_input(
                 "Username",
                 placeholder="Usename",
@@ -182,14 +234,21 @@ if __name__ == "__main__":
                 help="Nome de usuário",
             )
             pwd = st.text_input(
-                "Senha", placeholder="senha", type="password", autocomplete=None, help="senha"
+                "Senha",
+                placeholder="senha",
+                type="password",
+                autocomplete=None,
+                help="senha",
             )
             btn_sbm = st.form_submit_button("Logar", type="primary")
             if btn_sbm:
-                if not state.check_login(user=username, pwd=pwd):
+                if not state.check_login(username=username, pwd=pwd):
                     st.toast("Username ou senha incorretos!")
+                else:
+                    st.rerun()
 
     else:
+        st.sidebar.title("Menu")
         always_run_components()
         # handle_new()
         st.sidebar.divider()
@@ -259,8 +318,31 @@ if __name__ == "__main__":
             help="Pausar a rotina. Clique em inicial rotina para continuar",
             on_click=handle_pause,
         )
+        st.sidebar.divider()
+        st.sidebar.write(":material/admin_panel_settings: Sistema")
+        st.sidebar.button(
+            ":material/logout: Deslogar",
+            use_container_width=True,
+            help="Deslogar",
+            on_click=handle_logout,
+        )
+        max_timeout = st.sidebar.number_input(
+            "Tempo de sessão",
+            min_value=30,
+            max_value=600,
+            step=30,
+            value=state.max_timeout,
+        )
+        if max_timeout:
+            state.max_timeout = max_timeout
+        state.restore_timeout()
+        timeout_counter()
         # Exibe o DataFrame se ele existir
         if isinstance(state.df, DataFrame):
             st.dataframe(state.df, use_container_width=True)
         else:
             st.write("Nenhuma planilha carregada.")
+            st.image(
+                "assets/empty_state.jpg",
+                caption="Não há planilhas"
+            )
