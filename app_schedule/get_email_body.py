@@ -2,8 +2,8 @@ def get_email_body(table_str: str, subject: str) -> str:
     """Monta o corpo do email
 
     Args:
-        subject (str): _description_
-        body (str): _description_
+        subject (str): assunto
+        body (str): corpo da tabela pandas em formato str
 
     Returns:
         bool: _description_

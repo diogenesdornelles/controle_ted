@@ -8,14 +8,90 @@ from pathlib import Path
 from pandas import DataFrame
 
 import streamlit as st
-from app_dataframe.statefull_dataframe_handler import \
-    statefull_dataframe_handler
+from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
 from app_state.app_state import state
 from settings import settings
+import pandas as pd
+from utils.return_today_str import return_today_str
+
+
+def set_chart() -> None:
+    """
+    Plots a scatter chart using dates from the uploaded spreadsheet.
+
+    This function processes the relevant columns in the DataFrame, filters data
+    based on today's date, sorts the DataFrame by specified columns, and then
+    plots a scatter chart. It ensures that only relevant data (from today onward)
+    is displayed in the chart.
+
+    Steps:
+    - Extracts the columns to work with (starting from the third-to-last column).
+    - Converts the date column to the proper format for comparison.
+    - Filters out rows with dates earlier than today.
+    - Sorts the data by specified columns.
+    - Displays the scatter chart using Streamlit.
+
+    Args:
+        None
+    Returns:
+        None
+    """
+    if isinstance(state.df, DataFrame):
+        st.divider()
+        st.subheader("Gráfico", divider=True)
+        initial_data_column = -3
+        df = pd.DataFrame()
+        df["Termo"] = state.df.index.to_series(name="Termo")
+        for column in statefull_dataframe_handler.columns[initial_data_column:]:
+            df[column] = state.df[column]
+
+        df.reset_index(inplace=True, drop=True)
+        df.set_index("Termo", inplace=True)
+        # Plot the line chart with the proper structure
+        df[statefull_dataframe_handler.columns[initial_data_column]] = pd.to_datetime(
+            df[statefull_dataframe_handler.columns[initial_data_column]],
+            format="%d/%m/%Y",
+        )
+        df = df[
+            df[statefull_dataframe_handler.columns[initial_data_column]]
+            >= pd.to_datetime(return_today_str(), format="%d/%m/%Y")
+        ]
+        df[statefull_dataframe_handler.columns[initial_data_column]] = df[
+            statefull_dataframe_handler.columns[initial_data_column]
+        ].dt.strftime("%d/%m/%Y")
+        order = [
+            statefull_dataframe_handler.columns[-2],
+            statefull_dataframe_handler.columns[-3],
+            statefull_dataframe_handler.columns[-1],
+        ]
+        df.sort_values(
+            by=order,
+            inplace=True,
+        )
+        st.scatter_chart(
+            df,
+            y=order,  # Use the column values for the y-axis
+            x_label="Termo",
+            y_label="Datas",
+            use_container_width=True,
+        )
 
 
 @st.dialog("Confirmação", width="large")
-def confirm_pwd() -> None:
+def confirm_pwd(**kwargs) -> None:
+    """
+    Displays a password confirmation dialog to verify critical actions.
+
+    This function displays a dialog with a password input field. If the password is correct,
+    it will trigger a specific function (save, delete, start, pause) based on the argument passed.
+
+    Args:
+        kwargs["func"] (str): The name of the action to execute after password verification
+                              (e.g., 'save', 'delete', 'start', 'pause').
+
+    Returns:
+        None
+    """
     st.write("Confirme sua senha")
     with st.form("Senha", clear_on_submit=True):
         pwd = st.text_input(
@@ -26,8 +102,16 @@ def confirm_pwd() -> None:
             help="senha",
         )
         btn = st.form_submit_button("Verificar", type="primary")
-        if btn:
-            state.pwd_ok = pwd == settings.user_pwd
+        if btn and pwd and pwd == settings.user_pwd:
+            match kwargs["func"]:
+                case "save":
+                    handle_save()
+                case "delete":
+                    handle_delete()
+                case "start":
+                    handle_start()
+                case "pause":
+                    handle_pause()
             st.rerun()
     if st.button("Fechar"):
         st.rerun()
@@ -36,7 +120,15 @@ def confirm_pwd() -> None:
 # Instruções renderizadas quando houve clique no btn dialog
 @st.dialog("Instruções", width="large")
 def show_instructions() -> None:
-    """Mostra menu de instruções"""
+    """
+    Displays a detailed instruction menu for uploading a valid Excel spreadsheet.
+
+    This function provides the user with the necessary instructions, including the required
+    format of the Excel file and columns. It uses HTML styling for enhanced visual presentation.
+
+    Returns:
+        None
+    """
     st.markdown(
         "<h2 style='color: #3498db;'>Forneça uma planilha Excel com extensão <code>.xlsx</code></h2>",
         unsafe_allow_html=True,
@@ -81,6 +173,15 @@ def show_instructions() -> None:
 
 @st.fragment(run_every=1)
 def timeout_counter():
+    """
+    Manages the countdown for the session timeout.
+
+    This function reduces the user's session timeout and displays a progress bar.
+    Once the timeout reaches zero, the user is automatically logged out.
+
+    Returns:
+        None
+    """
     state.timeout -= 1
     if state.timeout > 0:
         st.progress(
@@ -92,7 +193,16 @@ def timeout_counter():
 
 
 def always_run_components() -> None:
-    """_summary_"""
+    """
+    Renders persistent components on the sidebar.
+
+    This function is responsible for showing user information, task status, and general
+    application states that should always be visible in the sidebar. It also includes
+    the ability to show instructions and manage task states.
+
+    Returns:
+        None
+    """
 
     st.success(f"Bem-vindo(a): {state.username}")
     if st.button(
@@ -117,7 +227,15 @@ def always_run_components() -> None:
 
 
 def handle_new() -> None:
-    """_summary_"""
+    """
+    Handles the process of loading a new file into the application.
+
+    If a new file is uploaded, it updates the application state to reflect the new file.
+    If no file is provided, it resets the state accordingly.
+
+    Returns:
+        None
+    """
     file_uploaded = st.session_state["file_uploaded"]
     if file_uploaded is not None:
         if not state.file_uploaded:
@@ -142,20 +260,18 @@ def handle_new() -> None:
 
 
 def handle_save() -> None:
-    """_summary_"""
-    confirm_pwd()
-    if isinstance(state.df, DataFrame) and state.pwd_ok:
+    """Saves the dataframa stored in state"""
+    if isinstance(state.df, DataFrame):
         if statefull_dataframe_handler.save_df(state.df):
             st.toast(":material/add: Planilha salva com sucesso!")
         else:
             st.toast(":material/error: Planilha não pôde ser salva!")
     else:
         st.toast(":material/error: Não há planilha previamente aberta!")
-    state.pwd_ok = False
 
 
 def handle_hide() -> None:
-    """_summary_"""
+    """Hides the dataframa stored in state"""
     if isinstance(state.df, DataFrame):
         state.df = False
     else:
@@ -163,7 +279,7 @@ def handle_hide() -> None:
 
 
 def handle_load() -> None:
-    """_summary_"""
+    """loads the dataframa stored in file root"""
     state.df = statefull_dataframe_handler.get_df()
     if isinstance(state.df, DataFrame):
         st.toast(":material/cached: Planilha encontrada e carregada")
@@ -174,45 +290,39 @@ def handle_load() -> None:
 
 
 def handle_delete() -> None:
-    """Summary"""
-    confirm_pwd()
-    if state.pwd_ok:
-        if statefull_dataframe_handler.delete_dataframe():
-            st.toast(":material/delete: Planilha deletada")
-            if state.kill_task():
-                st.toast(":material/cancel: Rotina desativada")
-            else:
-                st.toast(":material/info: Não há rotina para desativar")
-            handle_hide()
+    """Del the dataframa stored in file root"""
+
+    if statefull_dataframe_handler.delete_dataframe():
+        st.toast(":material/delete: Planilha deletada")
+        if state.kill_task():
+            st.toast(":material/cancel: Rotina desativada")
         else:
-            st.toast(":material/error: Aparentemente, não há planilha salva")
-    state.pwd_ok = False
+            st.toast(":material/info: Não há rotina para desativar")
+        handle_hide()
+    else:
+        st.toast(":material/error: Aparentemente, não há planilha salva")
 
 
 def handle_start() -> None:
-    """_summary_"""
-    confirm_pwd()
+    """Starts daemon task that send email"""
     if state.start_task():
         st.toast(":material/start: Rotina iniciada")
     else:
         st.toast(
             ":material/error: Ops... algo deu errado com o carregamento. Talvez não haja planilha salva"
         )
-    state.pwd_ok = False
 
 
 def handle_pause() -> None:
-    """_summary_"""
-    confirm_pwd()
+    """pauses daemon task that send email"""
     if state.kill_task():
         st.toast(":material/cancel: Rotina desativada")
     else:
         st.toast(":material/error: Aparentemente, não há rotina para desativar")
-    state.pwd_ok = False
 
 
 def handle_logout() -> None:
-    """_summary_"""
+    """Logout system"""
     if not state.is_logged:
         st.toast(":material/cancel: Usuário não logado")
     else:
@@ -267,14 +377,16 @@ if __name__ == "__main__":
         st.sidebar.button(
             ":material/file_save: Salvar",
             use_container_width=True,
-            on_click=handle_save,
+            on_click=confirm_pwd,
             help="Clique para salvar a planilha. A planilha somente será salva se houve carregamento prévio.",
+            kwargs={"func": "save"},
         )
         st.sidebar.button(
             ":material/delete: Deletar",
             use_container_width=True,
             help="Apague uma planilha salva. Isso causará a desativação da rotina",
-            on_click=handle_delete,
+            on_click=confirm_pwd,
+            kwargs={"func": "delete"},
         )
         st.sidebar.download_button(
             ":material/download: Baixar",
@@ -310,13 +422,15 @@ if __name__ == "__main__":
             ":material/start: Iniciar",
             use_container_width=True,
             help="Inicia uma rotina, desde que haja planilha salva",
-            on_click=handle_start,
+            on_click=confirm_pwd,
+            kwargs={"func": "start"},
         )
         st.sidebar.button(
             ":material/cancel: Interromper",
             use_container_width=True,
             help="Pausar a rotina. Clique em inicial rotina para continuar",
-            on_click=handle_pause,
+            on_click=confirm_pwd,
+            kwargs={"func": "pause"},
         )
         st.sidebar.divider()
         st.sidebar.write(":material/admin_panel_settings: Sistema")
@@ -340,9 +454,7 @@ if __name__ == "__main__":
         # Exibe o DataFrame se ele existir
         if isinstance(state.df, DataFrame):
             st.dataframe(state.df, use_container_width=True)
+            set_chart()
         else:
             st.write("Nenhuma planilha carregada.")
-            st.image(
-                "assets/empty_state.jpg",
-                caption="Não há planilhas"
-            )
+            st.image("assets/empty_state.jpg", caption="Não há planilhas")

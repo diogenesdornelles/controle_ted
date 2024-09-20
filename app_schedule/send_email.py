@@ -9,11 +9,11 @@ def send_email(subject: str, body: str) -> bool:
     """Envia email
 
     Args:
-        subject (str): _description_
-        body (str): _description_
+        subject (str): assunto
+        body (str): corpo do email
 
     Returns:
-        bool: _description_
+        bool: true se houve êxito
     """
     try:
         sender = "gptdornelles@gmail.com"
