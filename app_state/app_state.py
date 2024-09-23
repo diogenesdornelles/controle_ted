@@ -7,7 +7,8 @@ from pydantic import BaseModel
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 import streamlit as st
-from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
+from app_dataframe.statefull_dataframe_handler import \
+    statefull_dataframe_handler
 from app_models.models import TaskSettings
 from app_schedule.end_schedule import end_schedule
 from app_schedule.run_schedule import run_schedule
@@ -40,7 +41,6 @@ class AppState(BaseModel):
     timeout: int = 0
     max_timeout: int = 300
     is_logged: bool = False
-    pwd_ok: bool = False
     file_uploaded: None | UploadedFile = None
     df: DataFrame | bool = statefull_dataframe_handler.get_df()
     task_process: TaskSettings = {"since": "", "process": None, "should_run": False}

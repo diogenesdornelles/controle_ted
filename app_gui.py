@@ -5,13 +5,13 @@ Here's our first attempt at using data to create a table:
 
 from pathlib import Path
 
+import pandas as pd
 from pandas import DataFrame
 
 import streamlit as st
 from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
 from app_state.app_state import state
 from settings import settings
-import pandas as pd
 from utils.return_today_str import return_today_str
 
 
@@ -360,7 +360,6 @@ if __name__ == "__main__":
     else:
         st.sidebar.title("Menu")
         always_run_components()
-        # handle_new()
         st.sidebar.divider()
         st.sidebar.write(":material/draft: Arquivo")
         if isinstance(state.df, DataFrame):
@@ -457,4 +456,4 @@ if __name__ == "__main__":
             set_chart()
         else:
             st.write("Nenhuma planilha carregada.")
-            st.image("assets/empty_state.jpg", caption="Não há planilhas")
+            st.image("assets/empty_state.jpg", caption="Não há planilhas", width=400)

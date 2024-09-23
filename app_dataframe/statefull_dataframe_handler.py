@@ -3,8 +3,6 @@ from typing import Any
 
 from pandas import DataFrame
 from streamlit.runtime.uploaded_file_manager import UploadedFile
-
-import streamlit as st
 from app_dataframe.base_dataframe_handler import BaseDataframeHandler
 
 
