@@ -1,8 +1,8 @@
 """
-# My first app
-Here's our first attempt at using data to create a table:
+# My first app streamlit
 """
 
+from multiprocessing import Process
 from pathlib import Path
 
 import pandas as pd
@@ -77,8 +77,46 @@ def set_chart() -> None:
         )
 
 
+def dispatch(**kwargs):
+    match kwargs["func"]:
+        case "save":
+            if not isinstance(state.df, DataFrame):
+                st.toast(":material/error: Não há planilha previamente aberta!")
+            else:
+                confirm_pwd(kwargs["func"])
+        case "delete":
+            if not Path("planilha.xlsx").exists():
+                st.toast(":material/error: Aparentemente, não há planilha para remover")
+            else:
+                confirm_pwd(kwargs["func"])
+        case "start":
+            if not Path("planilha.xlsx").exists() or isinstance(
+                state.task_process["process"], Process
+            ):
+                st.toast(
+                    ":material/error: Aparentemente, não há planilha para iniciar rotina ou a rotina já está iniciada"
+                )
+            else:
+                confirm_pwd(kwargs["func"])
+        case "pause":
+            if not isinstance(state.task_process["process"], Process):
+                st.toast(
+                    ":material/error: Aparentemente, não há rotina para interromper"
+                )
+            else:
+                confirm_pwd(kwargs["func"])
+        case "new":
+            handle_new()
+        case "hide":
+            handle_hide()
+        case "load":
+            handle_load()
+        case "logout":
+            handle_logout()
+
+
 @st.dialog("Confirmação", width="large")
-def confirm_pwd(**kwargs) -> None:
+def confirm_pwd(func: str) -> None:
     """
     Displays a password confirmation dialog to verify critical actions.
 
@@ -103,7 +141,7 @@ def confirm_pwd(**kwargs) -> None:
         )
         btn = st.form_submit_button("Verificar", type="primary")
         if btn and pwd and pwd == settings.user_pwd:
-            match kwargs["func"]:
+            match func:
                 case "save":
                     handle_save()
                 case "delete":
@@ -268,13 +306,10 @@ def handle_new() -> None:
 
 def handle_save() -> None:
     """Saves the dataframa stored in state"""
-    if isinstance(state.df, DataFrame):
-        if statefull_dataframe_handler.save_df(state.df):
-            st.toast(":material/add: Planilha salva com sucesso!")
-        else:
-            st.toast(":material/error: Planilha não pôde ser salva!")
+    if statefull_dataframe_handler.save_df(state.df):
+        st.toast(":material/add: Planilha salva com sucesso!")
     else:
-        st.toast(":material/error: Não há planilha previamente aberta!")
+        st.toast(":material/error: Planilha não pôde ser salva!")
 
 
 def handle_hide() -> None:
@@ -324,6 +359,7 @@ def handle_pause() -> None:
     """pauses daemon task that send email"""
     if state.kill_task():
         st.toast(":material/cancel: Rotina desativada")
+        st.rerun()
     else:
         st.toast(":material/error: Aparentemente, não há rotina para desativar")
 
@@ -376,14 +412,15 @@ if __name__ == "__main__":
         st.sidebar.file_uploader(
             label=LABEL,
             type=["xlsx"],
-            on_change=handle_new,
+            on_change=dispatch,
             key="file_uploaded",
+            kwargs={"func": "new"},
         )
 
         st.sidebar.button(
             ":material/file_save: Salvar",
             use_container_width=True,
-            on_click=confirm_pwd,
+            on_click=dispatch,
             help="Clique para salvar a planilha. A planilha somente será salva se houve carregamento prévio.",
             kwargs={"func": "save"},
         )
@@ -391,7 +428,7 @@ if __name__ == "__main__":
             ":material/delete: Deletar",
             use_container_width=True,
             help="Apague uma planilha salva. Isso causará a desativação da rotina",
-            on_click=confirm_pwd,
+            on_click=dispatch,
             kwargs={"func": "delete"},
         )
         st.sidebar.download_button(
@@ -413,13 +450,15 @@ if __name__ == "__main__":
             ":material/file_open: Abrir",
             use_container_width=True,
             help="Carregar uma planilha salva",
-            on_click=handle_load,
+            on_click=dispatch,
+            kwargs={"func": "load"},
         )
         st.sidebar.button(
             ":material/close: Fechar",
             use_container_width=True,
             help="Remova a planilha da tela",
-            on_click=handle_hide,
+            on_click=dispatch,
+            kwargs={"func": "hide"},
         )
 
         st.sidebar.divider()
@@ -428,14 +467,14 @@ if __name__ == "__main__":
             ":material/start: Iniciar",
             use_container_width=True,
             help="Inicia uma rotina, desde que haja planilha salva",
-            on_click=confirm_pwd,
+            on_click=dispatch,
             kwargs={"func": "start"},
         )
         st.sidebar.button(
             ":material/cancel: Interromper",
             use_container_width=True,
             help="Pausar a rotina. Clique em inicial rotina para continuar",
-            on_click=confirm_pwd,
+            on_click=dispatch,
             kwargs={"func": "pause"},
         )
         st.sidebar.divider()
@@ -444,7 +483,8 @@ if __name__ == "__main__":
             ":material/logout: Deslogar",
             use_container_width=True,
             help="Deslogar",
-            on_click=handle_logout,
+            on_click=dispatch,
+            kwargs={"func": "logout"},
         )
         max_timeout = st.sidebar.number_input(
             "Tempo de sessão",

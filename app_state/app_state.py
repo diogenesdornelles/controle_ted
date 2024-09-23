@@ -7,8 +7,7 @@ from pydantic import BaseModel
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 import streamlit as st
-from app_dataframe.statefull_dataframe_handler import \
-    statefull_dataframe_handler
+from app_dataframe.statefull_dataframe_handler import statefull_dataframe_handler
 from app_models.models import TaskSettings
 from app_schedule.end_schedule import end_schedule
 from app_schedule.run_schedule import run_schedule
@@ -43,7 +42,11 @@ class AppState(BaseModel):
     is_logged: bool = False
     file_uploaded: None | UploadedFile = None
     df: DataFrame | bool = statefull_dataframe_handler.get_df()
-    task_process: TaskSettings = {"since": "", "process": None, "should_run": False}
+    task_process: TaskSettings = TaskSettings(
+        since="",
+        process=None,
+        should_run=False,
+    )
 
     class Config:
         """
@@ -88,21 +91,16 @@ class AppState(BaseModel):
         """
         try:
             if (
-                self.task_process["process"]
-                and isinstance(self.task_process["process"], Process)
+                isinstance(self.task_process["process"], Process)
                 and self.task_process["process"].is_alive()  # type: ignore
             ):
                 self.task_process["process"].terminate()  # type: ignore
-                self.task_process["process"].join()  # type: ignore
                 self.task_process = TaskSettings(
                     since="",
                     process=None,
                     should_run=False,
                 )
-                end_task_process = Process(target=end_schedule)
-                end_task_process.start()  # Uncomment to start the process
-                end_task_process.terminate()  # type: ignore
-                end_task_process.join()  # type: ignore
+                end_schedule()
                 return True
             return False
         except Exception as err:
