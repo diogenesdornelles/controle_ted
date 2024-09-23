@@ -17,7 +17,7 @@ def send_email(subject: str, body: str) -> bool:
     """
     try:
         sender = "gptdornelles@gmail.com"
-        to = "diogenes.dornelles@gmail.com"
+        to = "orcamento@ifrs.edu.br"
         msg = email.message.Message()
         msg["Subject"] = f"TED {subject}: Aviso de prazo!"
         msg["From"] = sender
