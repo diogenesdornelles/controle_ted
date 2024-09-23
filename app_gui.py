@@ -216,7 +216,7 @@ def show_instructions() -> None:
         st.rerun()
 
 
-@st.fragment(run_every=1)
+@st.fragment(run_every=7)
 def timeout_counter():
     """
     Manages the countdown for the session timeout.
