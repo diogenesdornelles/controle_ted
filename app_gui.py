@@ -207,7 +207,8 @@ def show_instructions() -> None:
         <p>É possível interromper a rotina a qualquer momento.</p>
         <p>Por motivos de segurança, o aplicativo funciona com um tempo de sessão definido, ajustável no menu lateral, que pode variar entre 30 segundos e 10 minutos. A cada interação o tempo de sessão é restaurado.</p>
         <p>Linhas em que não há informações data serão excluídas</p>
-        <p>para coluna 'vigência início' sem data, será inserida a data de 01/01/1970</p>
+        <p>Para coluna 'vigência início' sem data, será inserida a data de 01/01/1970</p>
+        <p>Exemplo de planilha <a href="https://docs.google.com/spreadsheets/d/1taOxp_T8rBkl7Ge9G7WvriFNjsmyncrTzrDXhHoXm7g/edit?usp=sharing">AQUI</a></p>
     </div>
     """,
         unsafe_allow_html=True,
