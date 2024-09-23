@@ -48,6 +48,7 @@ class BaseDataframeHandler(BaseModel):
                 index_col=None,
                 names=self.columns[:-2],
                 na_values=["-"],
+                header=None
             )
             return df
         except Exception as e:

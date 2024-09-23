@@ -118,9 +118,8 @@ class AppState(BaseModel):
         """
         try:
             if not self.task_process["process"] and Path("planilha.xlsx").exists():  # type: ignore
-
                 task_process = Process(target=run_schedule)
-                # task_process.start()  # Uncomment to start the process
+                task_process.start()  # Uncomment to start the process
                 self.task_process = TaskSettings(
                     since=dt.now().strftime("%d/%m/%Y %H:%M:%S"),
                     process=task_process,

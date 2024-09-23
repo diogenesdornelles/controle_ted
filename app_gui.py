@@ -154,15 +154,22 @@ def show_instructions() -> None:
     """,
         unsafe_allow_html=True,
     )
+    st.markdown(
+        "<h3 style='color: #2ecc71;'>Não inclua linhas de cabeçalho ou de rodapé. O sistema faz isso automaticamente.</h3>",
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         """
     <div style='background-color: #f9f9f9; padding: 15px; border-left: 5px solid #e74c3c;'>
-        <p>O sistema calcula automaticamente os 120 dias para prestação de contas e emite aviso 35 dias antes do fim da vigência.</p>
-        <p>O sistema somente envia e-mail se houver uma planilha válida e houver a inicialização da rotina.</p>
+        <p>O sistema calcula automaticamente 120 dias para prestação de contas, após a vigência fim.</p>
+        <p>O sistema calcula automaticamente de aviso de 35 dias, antes da vigência fim.</p>
+        <p>O sistema somente envia e-mail se houver uma planilha válida devidamente salva e houver a inicialização da rotina no menu lateral.</p>
+        <p>Não faça anotações às margens, lateral ou inferior da planilha.</p>
         <p>É possível interromper a rotina a qualquer momento.</p>
         <p>Por motivos de segurança, o aplicativo funciona com um tempo de sessão definido, ajustável no menu lateral, que pode variar entre 30 segundos e 10 minutos. A cada interação o tempo de sessão é restaurado.</p>
-        <p></p>
+        <p>Linhas em que não há informações data serão excluídas</p>
+        <p>para coluna 'vigência início' sem data, será inserida a data de 01/01/1970</p>
     </div>
     """,
         unsafe_allow_html=True,
